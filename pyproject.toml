@@ -1,0 +1,17 @@
+[project]
+name = "ark_tools"
+version = "0.1"
+description = ""
+authors = [
+    {name = "Orilx", email = "orilx@outlook.com"},
+]
+dependencies = [
+    "UnityPy>=1.10.2",
+    "Pillow>=10.0.0",
+    "httpx>=0.24.1",
+    "natsort>=8.4.0",
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "MIT"}
+
