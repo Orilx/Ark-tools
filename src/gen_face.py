@@ -66,29 +66,39 @@ def gen_face(directory_path, crop_lb_x, crop_lb_y, crop_width):
             space_width = (g_x-space)*width+(g_x-space-1)*gap_width
             base_img.paste(white_base.resize((space_width, width)),
                            (unit_width*space, unit_width*(pic_cnt // g_x)))
-        # 保存图片
-        save_path = img_path.parent/f"{img_path.name}_{cate}.png"
-        t = Image.new("RGB", (g_x*unit_width+gap_width,
-                      g_y*unit_width+gap_width))
+        
+
+        t_width = g_x*unit_width+gap_width
+        t_height = g_y*unit_width+gap_width
+        t = Image.new("RGBA", (t_width, t_height), color='black')
+
+        # 全身立绘
+        full_path = img_path.parent/f"{img_path.name}_{cate}_full.png"
+        full_white_base = Image.new('RGBA', size=(1024, 1024), color='white')
+        full_white_base.alpha_composite(Image.open(img_path/f"1${cate}.png"))
+        full_white_base.save(full_path)
+        save_list.append(full_path)
+
         # 水印
         code_img = code128_image('5rOw5ouJ5peF56S+')
         code_img = code_img.resize((code_img.width, t.height))
         code_mask = Image.new('L', size=code_img.size, color='#181818')
         t.paste(code_img, box=((t.width-code_img.width)//2, 0), mask=code_mask)
-
+        
         t.paste(base_img, (gap_width, gap_width))
+        # 保存图片
+        save_path = img_path.parent/f"{img_path.name}_{cate}.png"
         t.save(save_path)
         save_list.append(save_path)
 
     return save_list
 
 
-# 要遍历的目录路径
-directory_path = "cache/out/avg_190_clour_1"
+directory_path = "cache/out/avg_225_haak_1"
 
-crop_lb_x = 365
-crop_lb_y = 0
-crop_width = 250
+crop_lb_x = 440
+crop_lb_y = -10
+crop_width = 220
 
 path_list = gen_face(directory_path, crop_lb_x, crop_lb_y, crop_width)
 
@@ -97,10 +107,8 @@ path_list = gen_face(directory_path, crop_lb_x, crop_lb_y, crop_width)
 tool_path = "./tools/realcugan/realcugan-ncnn-vulkan.exe"
 
 for p in path_list:
-    cmd = f"{tool_path} -n 1 -i {p.absolute()} -o {p.absolute()}"
+    cmd = f"{tool_path} -n 1 -s 2 -i {p.absolute()} -o {p.absolute()}"
 
-# stdout = subprocess.run(cmd.split(" "), capture_output=True).stdout
-    # print(subprocess.run(cmd.split(" "), capture_output=True).stdout.decode())
     print("run command:", cmd)
 
     process = subprocess.Popen(

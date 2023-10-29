@@ -8,8 +8,9 @@ authors = [
 dependencies = [
     "UnityPy>=1.10.2",
     "Pillow>=10.0.0",
-    "httpx>=0.24.1",
+    "httpx>=0.25.0",
     "natsort>=8.4.0",
+    "requests>=2.31.0",
 ]
 requires-python = ">=3.11"
 readme = "README.md"
