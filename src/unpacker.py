@@ -6,7 +6,7 @@ import UnityPy
 
 
 class ArkUnPacker:
-    def __init__(self, input_file: str | bytes, output_path: str = 'cache/out/'):
+    def __init__(self, input_file: str | bytes, output_path: str = 'out/'):
         self.env = UnityPy.load(input_file)
         self.output_path = Path(output_path) / f'unpack_{int(time.time())}'
 
@@ -19,6 +19,7 @@ class ArkUnPacker:
             "pics":  {
                 "full": [],
                 "face": [],
+                "full_alpha": [],
                 "face_alpha": []
             },
             "pos_info": []
@@ -54,12 +55,39 @@ class ArkUnPacker:
                     if not out_file.name.endswith("[alpha].png"):
                         self.result["pics"]["full"].append(out_file.name)
                         self.result["type_cnt"] += 1
+                    else:
+                        self.result["pics"]["full_alpha"].append(
+                            out_file.name.replace('[alpha].png', ''))
                 else:
                     if not out_file.name.endswith("[alpha].png"):
                         self.result["pics"]["face"].append(out_file.name)
                     else:
                         self.result["pics"]["face_alpha"].append(
                             out_file.name.replace('[alpha].png', ''))
+
+            except Exception as e:
+                pass
+    
+    def save_Sprite(self, data):
+        """保存Sprite图片
+
+        Args:
+            data (_type_): Sprite
+        """
+
+        if not self.output_path.exists():
+            self.output_path.mkdir()
+
+        if data.name.startswith('avg'):
+            img_path = self.output_path / 'full'
+
+            if not img_path.exists():
+                img_path.mkdir()
+
+            out_file = img_path / f"{data.name}_sprite.png"
+
+            try:
+                data.image.save(out_file)
 
             except Exception as e:
                 pass
@@ -111,6 +139,7 @@ class ArkUnPacker:
     methods = {
         'Texture2D': save_Texture2D,
         'MonoBehaviour': get_pos_info,
+        # 'Sprite': save_Sprite
     }
 
     def export_avg_chararts(self) -> Dict[str, Any]:
@@ -133,13 +162,3 @@ class ArkUnPacker:
             self.result["pics"]["face_alpha"])
         return self.result
 
-    # def export_CG(self) -> Dict[str, Any]:
-    #     """导出 CG
-
-    #     Returns:
-    #         Dict[str, Any]: _description_
-    #     """
-    #     for obj in self.env.objects:
-    #         if obj.type.name == 'Texture2D':
-    #             self.save_Texture2D(obj.read())
-    #     return self.result
