@@ -1,5 +1,9 @@
 import json
 from pathlib import Path
+import re
+from decimal import Decimal
+from typing import Dict
+from ruamel.yaml import YAML
 
 # 特性/天赋
 target_table = {"TRAIT": "overrideTraitDataBundle",
@@ -53,8 +57,36 @@ class Equip:
         self.missionList = equip_table["missionList"]
         self.result = []
 
-    def parser(self, src, key_map):
-        return src
+
+    def t(self, key: str, key_map: Dict[str, float]) -> str:
+        """匹配 {} 中的内容并以字符串形式返回对应的值
+
+        Args:
+            key (str): 输入的 key
+            key_map (Dict[str, float]): 映射表
+
+        Returns:
+            str: _description_
+        """
+
+        r = key.split(':')
+        value = Decimal(f'{key_map[r[0]]}')
+        result = f'{value.to_integral_value()}'
+        if len(r) == 2:
+            if r[1] == "0%":
+                result = f'{(value*100).to_integral_value()}%'
+        return result
+
+    def parser(self, src: str, key_map: Dict[str, float]):
+        # 替换全角符号
+        src = src.replace("％", "%")
+        # 匹配并清除多余的标签
+        src = re.sub(r"(<([@$/].*?)>)", "", src)
+
+        # 匹配被 {} 包围的部分
+        result = re.sub(
+            r"\{(.*?)\}", lambda match: self.t(match.group(1), key_map), src)
+        return result
 
     def process(self, equip_id, char_id, battle_equip_table):
         tem = {
@@ -68,12 +100,11 @@ class Equip:
         for equip in phases["phases"]:
             # 模组等级
             equipLevel = equip["equipLevel"]
-            # print(f"模组等级: {equipLevel}")
             attributeBlackboard = []
             # 白值更新
             for i in equip["attributeBlackboard"]:
                 k = i["key"]
-                v = i["value"]
+                v = int(i["value"])
                 attributeBlackboard.append(f"{name_table[k]} +{v}")
             TRAIT = []
             TALENT = []
@@ -88,23 +119,31 @@ class Equip:
                             blackboard[b["key"]] = b["value"]
                         # 提取描述
                         if additionalDescription := candidate["additionalDescription"]:
-                            TRAIT.append(f"特性追加: {additionalDescription}")
-                            
-                        if overrideDescripton := candidate["overrideDescripton"]:
+                            res = self.parser(
+                                f"{additionalDescription}", blackboard)
+                            TRAIT.append(res)
 
-                            TRAIT.append(f"特性更新: {overrideDescripton}")
+                        if overrideDescripton := candidate["overrideDescripton"]:
+                            res = self.parser(
+                                f"{overrideDescripton}", blackboard)
+                            TRAIT.append(res)
                 elif target in ["TALENT", "TALENT_DATA_ONLY"]:
                     # 提取 addOrOverrideTalentDataBundle
                     for candidate in part["addOrOverrideTalentDataBundle"]["candidates"]:
                         # 提取天赋更新描述
                         if upgradeDescription := candidate["upgradeDescription"]:
                             requiredPotentialRank = candidate["requiredPotentialRank"]
+                            # 只保留 1 潜情况下的数据
+                            if requiredPotentialRank:
+                                continue
                             name = candidate["name"]
-                            TALENT.append(
-                                f"天赋 [{name}] 更新（潜能为 {requiredPotentialRank+1} 时）: {upgradeDescription}")
+                            res = self.parser(
+                                # 天赋 [{name}] 更新（潜能为 {requiredPotentialRank+1} 时）:
+                                f"{upgradeDescription}", {})
+                            TALENT.append(res)
 
             tem["equip"].append({
-                "level": equipLevel,
+                # "level": equipLevel,
                 "attributeBlackboard": attributeBlackboard,
                 "TRAIT": TRAIT,
                 "TALENT": TALENT
@@ -116,9 +155,12 @@ class Equip:
             equipId = e["equipId"]
             char_id = e["charId"]
             self.process(equipId, char_id, self.battle_equip_table)
+        # print(self.result)
+        with open(dataPath / f"equip_table.yaml", "w") as file:
+            # json.dump(self.result, file, ensure_ascii=False)
+            yaml = YAML(pure=True)
 
-        with open(dataPath / f"equip_table.json", "w") as file:
-            json.dump(self.result, file, ensure_ascii=False)
+            yaml.dump(self.result, file)
 
 
 dataPath = Path("data/game_data/equip_data")
